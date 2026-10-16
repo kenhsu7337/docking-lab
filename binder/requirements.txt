@@ -1,0 +1,12 @@
+# Used by Binder. Pip only, so the image builds quickly. No PyMOL here;
+# the notebook shows structures with py3Dmol instead.
+vina>=1.2.5
+meeko>=0.6
+gemmi
+scipy
+rdkit
+numpy
+pandas
+matplotlib
+py3Dmol
+jupyterlab

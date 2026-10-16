@@ -1,0 +1,20 @@
+# Used by GitHub Codespaces (see .devcontainer/setup.sh).
+name: docking
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - rdkit
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - jupyterlab
+  - ipykernel
+  - py3dmol
+  - gemmi
+  - pymol-open-source
+  - pip
+  - pip:
+      - vina>=1.2.5
+      - meeko>=0.6

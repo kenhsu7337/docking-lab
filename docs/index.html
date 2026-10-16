@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Docking lab: AutoDock Vina and PyMOL</title>
+<meta name="description" content="A guided lab for preliminary docking data: prepare a protein, validate by redocking, dock your own compound.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AA%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=JetBrains+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F1F4F8; --surface:#FFFFFF; --ink:#12202F; --muted:#56677A; --line:#D3DCE5;
+  --accent:#0B7A75; --accent-ink:#FFFFFF; --accent-soft:#DDF0EE;
+  --warn:#9A5200; --warn-soft:#FBEBD4; --ok:#25744A; --ok-soft:#DDF1E5; --bad:#A93329; --bad-soft:#F9E0DD;
+  --code-bg:#EAF0F5;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1822; --surface:#152331; --ink:#E6EDF3; --muted:#93A4B5; --line:#26384A;
+    --accent:#3FC1B8; --accent-ink:#06231F; --accent-soft:#123A3A;
+    --warn:#E0A458; --warn-soft:#3A2D16; --ok:#6CC38F; --ok-soft:#173424; --bad:#F0847A; --bad-soft:#3E1D1A;
+    --code-bg:#0F1D2A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1822; --surface:#152331; --ink:#E6EDF3; --muted:#93A4B5; --line:#26384A;
+  --accent:#3FC1B8; --accent-ink:#06231F; --accent-soft:#123A3A;
+  --warn:#E0A458; --warn-soft:#3A2D16; --ok:#6CC38F; --ok-soft:#173424; --bad:#F0847A; --bad-soft:#3E1D1A;
+  --code-bg:#0F1D2A;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.6 var(--body);-webkit-text-size-adjust:100%}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);line-height:1.15;margin:0;letter-spacing:-.01em}
+h1{font-size:clamp(2rem,4.6vw,3.1rem);font-weight:700;max-width:18ch}
+h2{font-size:1.65rem;font-weight:700}
+h3{font-size:1.1rem;font-weight:600;font-family:var(--body)}
+p{margin:.6em 0}
+code,pre,textarea.mono{font-family:var(--mono);font-size:.86rem}
+:not(pre)>code{background:var(--code-bg);padding:.1em .35em;border-radius:4px}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top-in{max-width:1180px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.brand{font-family:var(--display);font-weight:700;font-size:1.1rem;color:var(--ink);text-decoration:none;margin-right:auto}
+.top nav a{color:var(--muted);text-decoration:none;font-size:.92rem;margin-left:16px}
+.top nav a:hover{color:var(--ink)}
+.theme{background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:4px 10px;font:inherit;font-size:.85rem;cursor:pointer}
+
+/* layout */
+.shell{max-width:1180px;margin:0 auto;padding:0 20px 80px;display:grid;grid-template-columns:210px minmax(0,1fr);gap:48px}
+.rail{position:sticky;top:76px;align-self:start;padding-top:36px;font-size:.92rem}
+.rail h4{margin:0 0 8px;font-size:.82rem;font-weight:600;color:var(--muted)}
+.rail ol,.rail ul{list-style:none;margin:0 0 24px;padding:0}
+.rail li a{display:flex;gap:10px;align-items:baseline;padding:5px 0;color:var(--ink);text-decoration:none}
+.rail li a:hover{color:var(--accent)}
+.rail .dot{flex:none;width:12px;height:12px;border-radius:50%;border:2px solid var(--line);transform:translateY(1px)}
+.rail li.done .dot{background:var(--ok);border-color:var(--ok)}
+.rail li.done a{color:var(--muted)}
+main{padding-top:36px;min-width:0}
+section{margin-bottom:64px}
+@media (max-width:900px){
+  .shell{grid-template-columns:minmax(0,1fr);gap:0}
+  .rail{display:none}
+  .top nav a{margin-left:12px}
+}
+
+/* hero */
+.hero p.lead{font-size:1.15rem;max-width:56ch;color:var(--muted);margin:16px 0 24px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:600 .95rem var(--body);text-decoration:none;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.small{padding:6px 12px;font-size:.85rem;font-weight:500}
+.btn-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.repo-field{margin-top:14px;font-size:.9rem;color:var(--muted);display:none}
+.repo-field.show{display:block}
+.repo-field input{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);width:min(22rem,100%)}
+.compare{width:100%;border-collapse:collapse;margin-top:28px;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:.92rem}
+.compare th,.compare td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.compare th{font-weight:600;background:var(--code-bg)}
+.compare tr:last-child td{border-bottom:0}
+.table-wrap{overflow-x:auto}
+
+/* panels */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px}
+.sec-head{margin-bottom:18px}
+.sec-head p{color:var(--muted);max-width:62ch}
+
+/* builder */
+.builder{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+@media (max-width:980px){.builder{grid-template-columns:minmax(0,1fr)}}
+label.field{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--muted)}
+label.field input,label.field select{font:400 .95rem var(--body);padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.group-title{font-size:.85rem;font-weight:600;margin:16px 0 8px}
+textarea{width:100%;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);padding:10px;resize:vertical}
+textarea.coords{height:140px;font-family:var(--mono);font-size:.78rem;line-height:1.4}
+.msg{min-height:1.5em;font-size:.88rem;margin:8px 0 0}
+.note{border-radius:10px;padding:10px 12px;font-size:.9rem;margin:10px 0 0}
+.note.warn{background:var(--warn-soft);color:var(--warn)}
+.note.ok{background:var(--ok-soft);color:var(--ok)}
+.note.bad{background:var(--bad-soft);color:var(--bad)}
+.plots{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.plot{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:6px}
+.plot svg{display:block;width:100%;height:auto}
+.plot figcaption{font-size:.8rem;color:var(--muted);padding:2px 6px 4px}
+.readout{display:grid;grid-template-columns:auto 1fr;gap:2px 14px;margin:14px 0 0;font-size:.92rem}
+.readout dt{color:var(--muted)}
+.readout dd{margin:0;font-family:var(--mono);font-size:.88rem}
+.output{position:relative;margin-top:16px}
+pre{margin:0;background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:14px 14px;overflow-x:auto;line-height:1.5}
+.copy{position:absolute;top:8px;right:8px}
+.output pre,.codeblock pre{padding-right:78px}
+
+/* steps */
+.step{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:16px}
+.step.done{border-color:var(--ok)}
+.step-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.step-head .n{font-family:var(--display);font-weight:700;font-size:1.5rem;color:var(--accent);min-width:1.4em}
+.step h3{font-size:1.2rem;font-family:var(--display)}
+.step .check{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:.88rem;color:var(--muted);cursor:pointer}
+.step .check input{width:18px;height:18px;accent-color:var(--ok)}
+.step ul{padding-left:1.2em;margin:.5em 0}
+.step li{margin:.25em 0}
+.codeblock{position:relative;margin:12px 0}
+.tag{display:inline-block;font-size:.8rem;padding:1px 8px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-weight:600;margin-right:6px}
+details{margin:10px 0}
+summary{cursor:pointer;font-weight:600}
+
+/* report */
+table.log{width:100%;border-collapse:collapse;font-size:.92rem}
+table.log th{text-align:left;font-weight:600;font-size:.82rem;color:var(--muted);padding:6px 6px}
+table.log td{padding:4px 4px;vertical-align:middle}
+table.log input{width:100%;font:400 .9rem var(--body);padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);min-width:70px}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.82rem;font-weight:600}
+.badge.pass{background:var(--ok-soft);color:var(--ok)}
+.badge.fail{background:var(--bad-soft);color:var(--bad)}
+.badge.none{color:var(--muted)}
+.rm{background:none;border:0;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:4px 8px}
+.rm:hover{color:var(--bad)}
+footer{color:var(--muted);font-size:.88rem;border-top:1px solid var(--line);padding-top:20px}
+.sr{position:absolute;left:-9999px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="#launch">Docking lab</a>
+    <nav aria-label="Sections">
+      <a href="#launch">Open the lab</a>
+      <a href="#box">Box builder</a>
+      <a href="#steps">Steps</a>
+      <a href="#report">Results and methods</a>
+    </nav>
+    <button class="theme" id="themeBtn" type="button" aria-label="Switch between light and dark theme">Theme</button>
+  </div>
+</header>
+
+<div class="shell">
+<aside class="rail" aria-label="Progress">
+  <h4>Tools</h4>
+  <ul>
+    <li><a href="#box"><span class="dot" style="border-radius:3px"></span>Box builder</a></li>
+    <li><a href="#report"><span class="dot" style="border-radius:3px"></span>Results and methods</a></li>
+  </ul>
+  <h4>Steps</h4>
+  <ol id="railSteps"></ol>
+</aside>
+
+<main>
+<section id="launch" class="hero">
+  <h1>Dock a compound, then check the answer against the crystal.</h1>
+  <p class="lead">In about three hours you will prepare a protein, dock a known drug back into it, measure how close the prediction is to the crystal structure, and dock your own compound the same way. You finish with a score table, a figure, and a methods paragraph for your proposal.</p>
+  <div class="btn-row">
+    <a class="btn primary" id="csLink" href="#" target="_blank" rel="noopener">Open in Codespaces</a>
+    <a class="btn" id="bdLink" href="#" target="_blank" rel="noopener">Open in Binder</a>
+  </div>
+  <div class="repo-field" id="repoField">
+    <label>This page could not tell which repository it belongs to. Enter it as <code>owner/repo</code>:
+      <input id="repoInput" placeholder="your-username/docking-lab" autocomplete="off" spellcheck="false">
+    </label>
+  </div>
+  <div class="table-wrap">
+  <table class="compare">
+    <thead><tr><th></th><th>Codespaces</th><th>Binder</th></tr></thead>
+    <tbody>
+      <tr><th>Account</th><td>GitHub account needed</td><td>None</td></tr>
+      <tr><th>PyMOL</th><td>Yes, in a desktop in your browser tab</td><td>No. The notebook uses a built-in 3D viewer</td></tr>
+      <tr><th>Speed</th><td>Dedicated cores, so docking runs finish sooner</td><td>Shared resources, so use exhaustiveness 8 for tests</td></tr>
+      <tr><th>Your files</th><td>Kept in your codespace</td><td>Deleted when the session times out. Download them first</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="box">
+  <div class="sec-head">
+    <h2>Box and config builder</h2>
+    <p>Vina only searches inside the box you define. Paste the crystal ligand's coordinates and the builder centers and sizes the box, shows it around the ligand, and writes the config file.</p>
+  </div>
+  <div class="panel builder">
+    <div>
+      <label class="field" for="coords">Ligand coordinates (PDB, PDBQT, SDF, or lines of <code>x y z</code>)</label>
+      <textarea id="coords" class="coords" spellcheck="false" placeholder="Paste the contents of ligand_crystal.pdb here"></textarea>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn small" id="exBtn" type="button">Use an example ligand (imatinib, 1IEP)</button>
+        <button class="btn small" id="clrBtn" type="button">Clear</button>
+      </div>
+      <p class="msg" id="parseMsg" role="status"></p>
+
+      <div class="group-title">Box</div>
+      <div class="grid2">
+        <label class="field">Padding around ligand (Å)<input id="pad" type="number" min="0" max="20" step="0.5" value="8"></label>
+        <label class="field">Exhaustiveness<input id="exh" type="number" min="1" max="128" step="1" value="32"></label>
+      </div>
+      <div class="grid3" style="margin-top:10px">
+        <label class="field">center_x<input id="cx" type="number" step="0.01"></label>
+        <label class="field">center_y<input id="cy" type="number" step="0.01"></label>
+        <label class="field">center_z<input id="cz" type="number" step="0.01"></label>
+        <label class="field">size_x<input id="sx" type="number" step="0.1" min="1"></label>
+        <label class="field">size_y<input id="sy" type="number" step="0.1" min="1"></label>
+        <label class="field">size_z<input id="sz" type="number" step="0.1" min="1"></label>
+      </div>
+      <div class="group-title">Files and run settings</div>
+      <div class="grid3">
+        <label class="field">Receptor<input id="fRec" value="receptor.pdbqt"></label>
+        <label class="field">Ligand<input id="fLig" value="control.pdbqt"></label>
+        <label class="field">Output<input id="fOut" value="control_out.pdbqt"></label>
+        <label class="field">Poses<input id="nModes" type="number" min="1" max="20" value="9"></label>
+        <label class="field">CPU cores<input id="cpu" type="number" min="0" max="64" value="4"></label>
+        <label class="field">Random seed<input id="seed" type="number" value="42"></label>
+      </div>
+    </div>
+
+    <div>
+      <div class="plots" aria-label="Ligand and search box">
+        <figure class="plot" style="margin:0"><svg id="plotXY" viewBox="0 0 300 300" role="img" aria-label="Ligand and box seen along z"></svg><figcaption>Top view (x, y)</figcaption></figure>
+        <figure class="plot" style="margin:0"><svg id="plotXZ" viewBox="0 0 300 300" role="img" aria-label="Ligand and box seen along y"></svg><figcaption>Side view (x, z)</figcaption></figure>
+      </div>
+      <dl class="readout">
+        <dt>Ligand size</dt><dd id="roLig">-</dd>
+        <dt>Box volume</dt><dd id="roVol">-</dd>
+      </dl>
+      <div id="notes"></div>
+      <div class="output">
+        <button class="btn small copy" type="button" data-copy="conf">Copy</button>
+        <pre id="conf" aria-label="Vina config file"></pre>
+      </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn small" id="dlConf" type="button">Download conf.txt</button>
+        <span style="font-size:.88rem;color:var(--muted)">Run it with <code>vina --config conf.txt</code></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="steps">
+  <div class="sec-head">
+    <h2>Steps</h2>
+    <p>Each step matches a part of the notebook <code>notebooks/docking_exercise.ipynb</code>. Tick a step when you finish it. Your ticks are saved in this browser.</p>
+  </div>
+  <div id="stepList"></div>
+</section>
+
+<section id="report">
+  <div class="sec-head">
+    <h2>Results and methods</h2>
+    <p>Log each run, then copy the table and the methods paragraph into your proposal draft.</p>
+  </div>
+
+  <div class="panel">
+    <h3>Results log</h3>
+    <div class="table-wrap">
+    <table class="log" id="logTable">
+      <thead><tr><th>Compound</th><th>Exhaustiveness</th><th>Top affinity (kcal/mol)</th><th>RMSD to crystal (Å)</th><th>Redock check</th><th><span class="sr">Remove</span></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    </div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn small" id="addRow" type="button">Add a run</button>
+      <button class="btn small" id="cpMd" type="button">Copy as table</button>
+      <button class="btn small" id="dlCsv" type="button">Download CSV</button>
+    </div>
+    <p class="msg" id="logMsg" role="status"></p>
+    <p style="font-size:.88rem;color:var(--muted)">The redock check only applies to the co-crystal ligand: a top pose within 2 Å of the crystal pose passes. Affinity differences under about 1 kcal/mol are within the noise of the method.</p>
+  </div>
+
+  <div class="panel" style="margin-top:16px">
+    <h3>Methods paragraph</h3>
+    <div class="grid3" style="margin-top:10px">
+      <label class="field">PDB entry<input id="mPdb" value="1HSG"></label>
+      <label class="field">Co-crystal ligand<input id="mLig" value="MK1"></label>
+      <label class="field">Vina version<input id="mVina" value="1.2.7"></label>
+      <label class="field">Redock RMSD (Å)<input id="mRmsd" type="number" step="0.01" placeholder="from your log"></label>
+      <label class="field">Your compound<input id="mCmp" placeholder="compound name"></label>
+      <label class="field">Its top affinity (kcal/mol)<input id="mAff" type="number" step="0.01"></label>
+    </div>
+    <div class="output">
+      <button class="btn small copy" type="button" data-copy="methods">Copy</button>
+      <pre id="methods" style="white-space:pre-wrap" aria-label="Methods paragraph"></pre>
+    </div>
+    <p style="font-size:.88rem;color:var(--muted)">Box and exhaustiveness come from the builder above. Edit the wording so it describes what you actually did, and state your protonation choices.</p>
+  </div>
+</section>
+
+<footer>
+  <p>Scores from docking are predictions used to prioritize hypotheses, not measured affinities. Describe results in a proposal as support for testing a compound, not as proof of binding.</p>
+</footer>
+</main>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- helpers ---------- */
+var $ = function(id){ return document.getElementById(id); };
+function store(key, val){
+  try{
+    if (val === undefined){ var v = localStorage.getItem(key); return v === null ? null : JSON.parse(v); }
+    localStorage.setItem(key, JSON.stringify(val));
+  }catch(e){ return null; }
+}
+function copyText(text){
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    return navigator.clipboard.writeText(text).catch(function(){ fallbackCopy(text); });
+  }
+  fallbackCopy(text); return Promise.resolve();
+}
+function fallbackCopy(text){
+  var t = document.createElement("textarea"); t.value = text; document.body.appendChild(t);
+  t.select(); try{ document.execCommand("copy"); }catch(e){} document.body.removeChild(t);
+}
+function download(name, text){
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], {type:"text/plain"}));
+  a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); document.body.removeChild(a); }, 500);
+}
+function flash(btn, text){
+  var old = btn.textContent; btn.textContent = text;
+  setTimeout(function(){ btn.textContent = old; }, 1400);
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+function round(v, d){ var f = Math.pow(10, d); return Math.round(v * f) / f; }
+
+/* ---------- theme ---------- */
+(function(){
+  var saved = store("dl-theme");
+  if (saved) document.documentElement.setAttribute("data-theme", saved);
+  $("themeBtn").addEventListener("click", function(){
+    var cur = document.documentElement.getAttribute("data-theme");
+    var dark = cur ? cur === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var next = dark ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    store("dl-theme", next);
+  });
+})();
+
+/* ---------- launch links ---------- */
+function repoSlug(){
+  var h = location.hostname, p = location.pathname.split("/").filter(Boolean);
+  if (/\.github\.io$/.test(h) && p.length){ return h.split(".")[0] + "/" + p[0]; }
+  if (/\.github\.io$/.test(h)){ return h.split(".")[0] + "/" + h; }
+  return store("dl-repo") || "";
+}
+function setLaunch(){
+  var slug = repoSlug();
+  var ok = /^[\w.-]+\/[\w.-]+$/.test(slug);
+  $("repoField").classList.toggle("show", !ok || !/\.github\.io$/.test(location.hostname));
+  if (!/\.github\.io$/.test(location.hostname)) $("repoInput").value = slug;
+  $("csLink").href = ok ? "https://codespaces.new/" + slug : "#";
+  $("bdLink").href = ok ? "https://mybinder.org/v2/gh/" + slug + "/HEAD?urlpath=lab/tree/notebooks/docking_exercise.ipynb" : "#";
+  [$("csLink"), $("bdLink")].forEach(function(a){ a.style.opacity = ok ? 1 : .55; });
+}
+$("repoInput").addEventListener("input", function(e){ store("dl-repo", e.target.value.trim()); setLaunch(); });
+setLaunch();
+
+/* ---------- coordinate parsing ---------- */
+function parseCoords(text){
+  var out = [], lines = text.split(/\r?\n/);
+  var reA = /^\s*(-?\d+\.\d+)\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)(\s+[A-Za-z]{1,2}\b.*)?\s*$/;
+  var reB = /^\s*[A-Za-z]{1,2}\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)\s*$/;
+  for (var i = 0; i < lines.length; i++){
+    var l = lines[i], m;
+    if (/^ENDMDL/.test(l) && out.length) break;
+    if (/^(ATOM|HETATM)/.test(l) && l.length >= 54){
+      var x = parseFloat(l.slice(30,38)), y = parseFloat(l.slice(38,46)), z = parseFloat(l.slice(46,54));
+      if (isFinite(x) && isFinite(y) && isFinite(z)) out.push([x,y,z]);
+    } else if ((m = reA.exec(l)) || (m = reB.exec(l))){
+      out.push([parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3])]);
+    }
+  }
+  return out;
+}
+function extent(atoms){
+  var lo = [Infinity,Infinity,Infinity], hi = [-Infinity,-Infinity,-Infinity];
+  atoms.forEach(function(a){ for (var k = 0; k < 3; k++){ if (a[k] < lo[k]) lo[k] = a[k]; if (a[k] > hi[k]) hi[k] = a[k]; } });
+  return {lo: lo, hi: hi};
+}
+
+/* ---------- builder ---------- */
+var EXAMPLE = "11.879 62.272 12.570 C\n13.002 61.429 12.910 C\n13.097 60.070 12.392 C\n12.031 59.591 11.525 C\n10.961 60.425 11.216 N\n10.858 61.734 11.710 C\n14.238 59.155 12.712 C\n15.433 59.579 13.383 C\n16.428 58.603 13.615 C\n16.232 57.303 13.202 N\n15.067 56.927 12.559 C\n14.101 57.840 12.327 N\n14.852 55.627 12.128 N\n15.822 54.641 12.322 C\n16.950 54.502 11.393 C\n17.915 53.471 11.648 C\n17.774 52.597 12.786 C\n16.678 52.727 13.688 C\n15.698 53.772 13.436 C\n16.600 51.810 14.798 N\n15.629 51.747 15.784 C\n15.595 50.558 16.689 C\n14.423 50.268 17.519 C\n14.423 49.124 18.396 C\n15.600 48.260 18.446 C\n16.747 48.568 17.608 C\n16.751 49.689 16.748 C\n15.696 47.030 19.368 C\n16.917 46.907 20.219 N\n17.097 48.140 21.070 C\n18.375 48.041 21.949 C\n18.337 46.794 22.821 N\n19.522 46.655 23.680 C\n18.172 45.533 21.971 C\n16.877 45.658 21.104 C\n14.789 52.612 15.983 O\n17.148 55.406 10.154 C";
+var atoms = [];
+var ids = ["cx","cy","cz","sx","sy","sz"];
+
+function num(id){ var v = parseFloat($(id).value); return isFinite(v) ? v : null; }
+
+function fromCoords(){
+  atoms = parseCoords($("coords").value);
+  var msg = $("parseMsg");
+  if (!$("coords").value.trim()){ msg.textContent = ""; msg.style.color = ""; atoms = []; render(); return; }
+  if (atoms.length < 3){
+    msg.textContent = "Found " + atoms.length + " atoms. Paste a PDB, PDBQT or SDF block, or lines of x y z.";
+    msg.style.color = "var(--bad)"; atoms = []; render(); return;
+  }
+  var e = extent(atoms), pad = num("pad") || 0;
+  var c = [0,1,2].map(function(k){ return round((e.lo[k] + e.hi[k]) / 2, 2); });
+  var s = [0,1,2].map(function(k){ return round(e.hi[k] - e.lo[k] + 2 * pad, 1); });
+  [c[0],c[1],c[2],s[0],s[1],s[2]].forEach(function(v, i){ $(ids[i]).value = v; });
+  msg.textContent = "Read " + atoms.length + " atoms.";
+  msg.style.color = "var(--muted)";
+  render();
+}
+
+function box(){
+  var v = ids.map(num);
+  if (v.some(function(x){ return x === null; })) return null;
+  return {c: v.slice(0,3), s: v.slice(3,6)};
+}
+
+function plot(svgId, ax, ay){
+  var svg = $(svgId), b = box();
+  if (!b){ svg.innerHTML = ""; return; }
+  var xs = [b.c[ax] - b.s[ax]/2, b.c[ax] + b.s[ax]/2], ys = [b.c[ay] - b.s[ay]/2, b.c[ay] + b.s[ay]/2];
+  atoms.forEach(function(a){ xs.push(a[ax]); ys.push(a[ay]); });
+  var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+  var span = Math.max(x1 - x0, y1 - y0) || 1, m = 18, k = (300 - 2*m) / span;
+  var ox = m + ((300 - 2*m) - (x1 - x0) * k) / 2, oy = m + ((300 - 2*m) - (y1 - y0) * k) / 2;
+  function X(v){ return ox + (v - x0) * k; }
+  function Y(v){ return 300 - (oy + (v - y0) * k); }
+  var bx = X(b.c[ax] - b.s[ax]/2), by = Y(b.c[ay] + b.s[ay]/2), bw = b.s[ax] * k, bh = b.s[ay] * k;
+  var parts = ['<rect x="'+bx.toFixed(1)+'" y="'+by.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="var(--accent)" fill-opacity=".10" stroke="var(--accent)" stroke-width="2"/>'];
+  atoms.forEach(function(a){ parts.push('<circle cx="'+X(a[ax]).toFixed(1)+'" cy="'+Y(a[ay]).toFixed(1)+'" r="3" fill="var(--ink)" fill-opacity=".75"/>'); });
+  parts.push('<circle cx="'+X(b.c[ax]).toFixed(1)+'" cy="'+Y(b.c[ay]).toFixed(1)+'" r="4" fill="none" stroke="var(--accent)" stroke-width="2"/>');
+  svg.innerHTML = parts.join("");
+}
+
+function configText(){
+  var b = box(); if (!b) return "";
+  return [
+    "receptor = " + $("fRec").value,
+    "ligand = " + $("fLig").value,
+    "out = " + $("fOut").value,
+    "",
+    "center_x = " + b.c[0], "center_y = " + b.c[1], "center_z = " + b.c[2],
+    "size_x = " + b.s[0], "size_y = " + b.s[1], "size_z = " + b.s[2],
+    "",
+    "exhaustiveness = " + ($("exh").value || 32),
+    "num_modes = " + ($("nModes").value || 9),
+    "energy_range = 3",
+    "cpu = " + ($("cpu").value || 0),
+    "seed = " + ($("seed").value || 42)
+  ].join("\n");
+}
+
+function notes(){
+  var b = box(), el = $("notes"), html = "";
+  if (!b){ el.innerHTML = ""; $("roVol").textContent = "-"; $("roLig").textContent = "-"; return; }
+  var vol = b.s[0] * b.s[1] * b.s[2], exh = num("exh") || 0;
+  $("roVol").textContent = Math.round(vol).toLocaleString("en-US") + " Å³";
+  if (atoms.length){
+    var e = extent(atoms);
+    $("roLig").textContent = [0,1,2].map(function(k){ return round(e.hi[k] - e.lo[k], 1); }).join(" × ") + " Å";
+  } else { $("roLig").textContent = "enter coordinates to see"; }
+  var longest = Math.max.apply(null, b.s);
+  if (vol > 27000){
+    html += '<div class="note warn">The box volume is above 27,000 Å³, so Vina will print a warning. Use exhaustiveness 32 or higher, or reduce the padding if the ligand allows it.</div>';
+  } else if (longest > 30){
+    html += '<div class="note warn">One side is longer than 30 Å. A larger search space needs a higher exhaustiveness to find the best pose.</div>';
+  }
+  if (exh && exh < 8){
+    html += '<div class="note warn">Exhaustiveness below 8 can miss the correct pose. Use it only to check that your files run.</div>';
+  }
+  if (atoms.length){
+    var e2 = extent(atoms), outside = false;
+    for (var k = 0; k < 3; k++){
+      if (e2.lo[k] < b.c[k] - b.s[k]/2 || e2.hi[k] > b.c[k] + b.s[k]/2) outside = true;
+    }
+    if (outside) html += '<div class="note bad">Part of the ligand lies outside the box. Increase the size or move the center.</div>';
+    else if (!html) html += '<div class="note ok">The ligand sits inside the box with room to move.</div>';
+  }
+  el.innerHTML = html;
+}
+
+function render(){
+  plot("plotXY", 0, 1); plot("plotXZ", 0, 2);
+  notes();
+  $("conf").textContent = configText();
+  methods();
+}
+
+$("coords").addEventListener("input", fromCoords);
+$("pad").addEventListener("input", function(){ if (atoms.length) fromCoords(); });
+ids.forEach(function(id){ $(id).addEventListener("input", render); });
+["exh","fRec","fLig","fOut","nModes","cpu","seed"].forEach(function(id){ $(id).addEventListener("input", render); });
+$("exBtn").addEventListener("click", function(){ $("coords").value = EXAMPLE; fromCoords(); });
+$("clrBtn").addEventListener("click", function(){ $("coords").value = ""; ids.forEach(function(i){ $(i).value = ""; }); fromCoords(); });
+$("dlConf").addEventListener("click", function(){ var t = configText(); if (t) download("conf.txt", t + "\n"); });
+
+document.querySelectorAll("[data-copy]").forEach(function(btn){
+  btn.addEventListener("click", function(){
+    var el = $(btn.getAttribute("data-copy"));
+    copyText(el.textContent).then(function(){ flash(btn, "Copied"); });
+  });
+});
+
+/* ---------- steps ---------- */
+function code(text){
+  return '<div class="codeblock"><button class="btn small copy" type="button" data-code>Copy</button><pre><code>' + esc(text) + '</code></pre></div>';
+}
+var STEPS = [
+ {id:"open", title:"Open the lab", body:
+  '<p><span class="tag">Codespaces</span>Select <strong>Open in Codespaces</strong> at the top of this page and wait for the setup to finish. Then open <code>notebooks/docking_exercise.ipynb</code> and choose the <code>docking</code> kernel. To use PyMOL, open the <strong>Ports</strong> tab, open port 6080 in your browser, sign in with the password <code>vscode</code>, and run this in a terminal:</p>' +
+  code("DISPLAY=:1 pymol &") +
+  '<p><span class="tag">Binder</span>Select <strong>Open in Binder</strong>. The first build can take several minutes. The notebook opens automatically and uses an in-notebook viewer instead of PyMOL.</p>' +
+  '<ul><li>Run the first code cell. It should print the Vina and Meeko versions.</li></ul>'},
+ {id:"inspect", title:"Inspect the structure", body:
+  '<p>Run Part 1. If you are using PyMOL, these commands show the same view:</p>' +
+  code("fetch 1hsg, async=0\nas cartoon\nselect lig, resn MK1\nshow sticks, lig\nselect site, byres (polymer within 5 of lig)\nshow lines, site\nzoom lig") +
+  '<ul><li>How many protein chains and ligands are there?</li><li>Which residues are within 5 Å of the ligand?</li><li>Are any waters, metals or cofactors near the site?</li></ul>'},
+ {id:"prepare", title:"Prepare the receptor and ligand", body:
+  '<p>Run Part 2. It splits the complex, removes waters and other heteroatoms, and converts both molecules to PDBQT with Meeko, which adds polar hydrogens and charges. The same steps from the command line:</p>' +
+  code("mk_prepare_receptor.py --read_pdb receptor.pdb -o receptor -p\nmk_prepare_ligand.py -i MK1_ideal.sdf -o control.pdbqt") +
+  '<ul><li>Read the list of dropped heteroatoms. A metal or cofactor in the site should stay.</li><li>Decide the protonation state of your ligand at pH 7.4 before you build it.</li></ul>'},
+ {id:"box", title:"Set the search box", body:
+  '<p>Open <code>work/ligand_crystal.pdb</code>, paste its contents into the <a href="#box">box builder</a>, and use the center and size it gives you. Part 3 of the notebook does the same calculation and draws the box. In PyMOL, this snippet prints the same numbers for an object named <code>lig</code>:</p>' +
+  code("python\nmn, mx = cmd.get_extent(\"lig\")\nprint([round((a+b)/2, 2) for a, b in zip(mn, mx)])\nprint([round(b-a+16, 1) for a, b in zip(mn, mx)])\npython end") +
+  '<ul><li>Is the whole ligand inside the box with room around it?</li></ul>'},
+ {id:"validate", title:"Validate by redocking", body:
+  '<p>Run Part 4. A top pose within <strong>2 Å</strong> RMSD of the crystal pose means your setup can recover a known answer. From the command line:</p>' +
+  code("vina --config conf.txt | tee redock.log\nmk_export.py control_out.pdbqt -s control_poses.sdf") +
+  '<ul><li>Record the affinity and RMSD in the results log below.</li><li>Run exhaustiveness 2, 8 and 32. A very low value can miss the pose entirely.</li><li>If the redock fails, check the box, the protonation, and the exhaustiveness, and report the outcome as it is.</li></ul>'},
+ {id:"dock", title:"Dock your compound", body:
+  '<p>Run Part 5 with your compound as a SMILES string. Keep the receptor, the box and the settings the same as in the validation so the scores are comparable with the control.</p>' +
+  '<ul><li>Include the control compound in your table.</li><li>Look at the top three poses, not only the score. Note the hydrogen-bond partners and hydrophobic contacts.</li><li>Check that polar groups are not left buried without a partner.</li></ul>'},
+ {id:"read", title:"Read the result", body:
+  '<ul><li>Scores are estimates in kcal/mol. More negative is better, and differences under about 1 kcal/mol are within the noise.</li><li>Larger ligands tend to score better, so compare compounds of similar size.</li><li>The receptor is rigid, and water and entropy are not modeled well.</li><li>A good dock is a hypothesis to test, not evidence of activity.</li></ul>' +
+  '<p>Fill in the methods paragraph below and add one clear figure of the best pose with the contacting residues labeled.</p>'}
+];
+var done = store("dl-done") || {};
+
+function buildSteps(){
+  var list = $("stepList"), rail = $("railSteps"), h = "", r = "";
+  STEPS.forEach(function(s, i){
+    var d = !!done[s.id];
+    h += '<article class="step' + (d ? ' done' : '') + '" id="step-' + s.id + '">' +
+      '<div class="step-head"><span class="n">' + (i + 1) + '</span><h3>' + s.title + '</h3>' +
+      '<label class="check"><input type="checkbox" data-step="' + s.id + '"' + (d ? ' checked' : '') + '> Done</label></div>' +
+      s.body + '</article>';
+    r += '<li data-rail="' + s.id + '" class="' + (d ? 'done' : '') + '"><a href="#step-' + s.id + '"><span class="dot"></span>' + s.title + '</a></li>';
+  });
+  list.innerHTML = h; rail.innerHTML = r;
+  list.querySelectorAll("input[data-step]").forEach(function(cb){
+    cb.addEventListener("change", function(){
+      var id = cb.getAttribute("data-step");
+      done[id] = cb.checked; store("dl-done", done);
+      cb.closest(".step").classList.toggle("done", cb.checked);
+      rail.querySelector('[data-rail="' + id + '"]').classList.toggle("done", cb.checked);
+    });
+  });
+  list.querySelectorAll("button[data-code]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      copyText(btn.parentNode.querySelector("code").textContent).then(function(){ flash(btn, "Copied"); });
+    });
+  });
+}
+buildSteps();
+
+/* ---------- results log ---------- */
+var rows = store("dl-log") || [{name:"", exh:"32", aff:"", rmsd:"", control:true}];
+function verdict(r){
+  if (!r.control || r.rmsd === "" || isNaN(parseFloat(r.rmsd))) return '<span class="badge none">-</span>';
+  return parseFloat(r.rmsd) <= 2 ? '<span class="badge pass">Pass</span>' : '<span class="badge fail">Fail</span>';
+}
+function drawLog(){
+  var tb = $("logTable").querySelector("tbody"), h = "";
+  rows.forEach(function(r, i){
+    h += '<tr data-i="' + i + '">' +
+      '<td><input data-k="name" value="' + esc(r.name) + '" aria-label="Compound"></td>' +
+      '<td><input data-k="exh" type="number" min="1" value="' + esc(r.exh) + '" aria-label="Exhaustiveness"></td>' +
+      '<td><input data-k="aff" type="number" step="0.01" value="' + esc(r.aff) + '" aria-label="Top affinity"></td>' +
+      '<td><input data-k="rmsd" type="number" step="0.01" min="0" value="' + esc(r.rmsd) + '" aria-label="RMSD"' + (r.control ? '' : ' placeholder="control only"') + '></td>' +
+      '<td>' + (verdict(r)) + '</td>' +
+      '<td><button class="rm" type="button" aria-label="Remove this run">×</button></td></tr>';
+  });
+  tb.innerHTML = h;
+  tb.querySelectorAll("tr").forEach(function(tr){
+    var i = +tr.getAttribute("data-i");
+    tr.querySelectorAll("input").forEach(function(inp){
+      inp.addEventListener("input", function(){
+        rows[i][inp.getAttribute("data-k")] = inp.value; store("dl-log", rows);
+        tr.children[4].innerHTML = verdict(rows[i]);
+        if (rows[i].control && inp.getAttribute("data-k") === "rmsd" && inp.value !== ""){ $("mRmsd").value = inp.value; methods(); }
+        if (!rows[i].control && inp.getAttribute("data-k") === "aff" && inp.value !== ""){ $("mAff").value = inp.value; if (!$("mCmp").value) $("mCmp").value = rows[i].name; methods(); }
+      });
+    });
+    tr.querySelector(".rm").addEventListener("click", function(){ rows.splice(i, 1); store("dl-log", rows); drawLog(); });
+  });
+}
+$("addRow").addEventListener("click", function(){
+  rows.push({name:"", exh: $("exh").value || "32", aff:"", rmsd:"", control: rows.length === 0});
+  store("dl-log", rows); drawLog();
+});
+function logRows(){ return rows.filter(function(r){ return r.name || r.aff || r.rmsd; }); }
+$("cpMd").addEventListener("click", function(){
+  var lines = ["| Compound | Exhaustiveness | Top affinity (kcal/mol) | RMSD to crystal (Å) |", "| --- | --- | --- | --- |"];
+  logRows().forEach(function(r){ lines.push("| " + [r.name, r.exh, r.aff, r.rmsd || "n/a"].join(" | ") + " |"); });
+  copyText(lines.join("\n")).then(function(){ flash($("cpMd"), "Copied"); });
+});
+$("dlCsv").addEventListener("click", function(){
+  var q = function(s){ return '"' + String(s).replace(/"/g, '""') + '"'; };
+  var lines = ["compound,exhaustiveness,top_affinity_kcal_mol,rmsd_to_crystal_A"];
+  logRows().forEach(function(r){ lines.push([q(r.name), r.exh, r.aff, r.rmsd].join(",")); });
+  download("docking_results.csv", lines.join("\n") + "\n");
+});
+drawLog();
+
+/* ---------- methods paragraph ---------- */
+function methods(){
+  var b = box();
+  var pdb = $("mPdb").value || "[PDB ID]", lig = $("mLig").value || "[ligand]";
+  var boxTxt = b ? "The search box (" + b.s.join(" × ") + " Å) was centered on the co-crystal ligand " + lig +
+      " at (" + b.c.join(", ") + ")" : "The search box was centered on the co-crystal ligand " + lig;
+  var rm = $("mRmsd").value, cmp = $("mCmp").value || "[compound]", af = $("mAff").value;
+  var text = "Compounds were docked into " + pdb + " using AutoDock Vina " + ($("mVina").value || "[version]") +
+    ". The receptor was prepared with Meeko after removing waters and heteroatoms, and ligands were converted to PDBQT with Meeko. " +
+    boxTxt + ", with exhaustiveness " + ($("exh").value || "[n]") + ". " +
+    "Redocking of " + lig + " reproduced the crystal pose with an RMSD of " + (rm ? rm : "[X]") + " Å. " +
+    cmp + " was predicted to bind with an affinity of " + (af ? af : "[Y]") + " kcal/mol. " +
+    "These scores are used to prioritize hypotheses for testing and are not measured affinities.";
+  $("methods").textContent = text;
+}
+["mPdb","mLig","mVina","mRmsd","mCmp","mAff"].forEach(function(id){ $(id).addEventListener("input", methods); });
+
+/* initial paint */
+render();
+
+/* expose for tests */
+window.__dl = {parseCoords: parseCoords, configText: configText, methods: methods};
+})();
+</script>
+</body>
+</html>
