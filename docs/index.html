@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Docking lab: AutoDock Vina and PyMOL</title>
+<title>Protein-ligand docking</title>
 <meta name="description" content="A guided lab for preliminary docking data: prepare a protein, validate by redocking, dock your own compound.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AA%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -155,7 +155,7 @@ footer{color:var(--muted);font-size:.88rem;border-top:1px solid var(--line);padd
 <body>
 <header class="top">
   <div class="top-in">
-    <a class="brand" href="#launch">Docking lab</a>
+    <a class="brand" href="#launch">Protein-ligand docking</a>
     <nav aria-label="Sections">
       <a href="#launch">Open the lab</a>
       <a href="#box">Box builder</a>
@@ -210,7 +210,7 @@ footer{color:var(--muted);font-size:.88rem;border-top:1px solid var(--line);padd
   </div>
   <div class="panel builder">
     <div>
-      <label class="field" for="coords">Ligand coordinates (PDB, PDBQT, SDF, or lines of <code>x y z</code>)</label>
+      <label class="field" for="coords"><span>Ligand coordinates (PDB, PDBQT, SDF, or lines of <code>x y z</code>)</span></label>
       <textarea id="coords" class="coords" spellcheck="false" placeholder="Paste the contents of ligand_crystal.pdb here"></textarea>
       <div class="btn-row" style="margin-top:8px">
         <button class="btn small" id="exBtn" type="button">Use an example ligand (imatinib, 1IEP)</button>
