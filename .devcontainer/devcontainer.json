@@ -1,0 +1,21 @@
+{
+  "name": "Docking lab",
+  "image": "mcr.microsoft.com/devcontainers/miniconda:3",
+  "features": {
+    "ghcr.io/devcontainers/features/desktop-lite:1": {}
+  },
+  "hostRequirements": { "cpus": 4 },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "forwardPorts": [6080],
+  "portsAttributes": {
+    "6080": { "label": "Desktop (open this to use PyMOL)", "onAutoForward": "notify" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-toolsai.jupyter", "ms-python.python"],
+      "settings": {
+        "python.defaultInterpreterPath": "/opt/conda/envs/docking/bin/python"
+      }
+    }
+  }
+}
